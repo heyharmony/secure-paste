@@ -1,0 +1,14 @@
+node_modules/
+.wrangler/
+.plan/
+.task/
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+wrangler.toml

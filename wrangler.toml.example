@@ -1,0 +1,15 @@
+name = "secure-paste"
+main = "src/index.tsx"
+compatibility_date = "2024-01-01"
+
+# Copy this file to wrangler.toml and fill in your deployment-specific values.
+routes = [
+  { pattern = "your-domain.example.com", custom_domain = true }
+]
+
+[assets]
+directory = "./public"
+
+[[r2_buckets]]
+binding = "PASTE_BUCKET"
+bucket_name = "your-r2-bucket-name"
