@@ -173,11 +173,12 @@ h1, h2 { color: var(--text-primary); font-style: normal; overflow-wrap: anywhere
 
 form { display: grid; gap: 1.5rem; }
 .form-group { display: grid; gap: 0.5rem; min-width: 0; }
-.form-group > label, fieldset > legend {
+.form-group > label, .group-heading {
   color: var(--text-secondary);
   font-size: 0.8125rem;
   font-weight: 550;
 }
+.group-heading { margin: 0; }
 .form-hint, .field-error {
   min-height: 1.25rem;
   color: var(--text-tertiary);
@@ -218,13 +219,11 @@ select { cursor: pointer; }
   display: grid;
   gap: 1.25rem;
   min-width: 0;
-  margin: 0;
   padding: 1rem;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   background: var(--surface-sidebar);
 }
-.access-controls legend { padding-inline: 0.25rem; }
 .checkbox-row {
   display: grid;
   grid-template-columns: 1.25rem minmax(0, 1fr);
@@ -269,11 +268,11 @@ select { cursor: pointer; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .submit-area {
-  display: grid;
-  gap: 1rem;
+  display: flex;
+  justify-content: flex-end;
   padding-top: 0.25rem;
 }
-.security-note { margin: 0; color: var(--text-tertiary); font-size: 0.75rem; }
+.submit-area .btn { width: 100%; }
 
 .result-panel, .password-panel, .content-card {
   border: 1px solid var(--border-subtle);
@@ -430,9 +429,6 @@ select { cursor: pointer; }
 .mermaid-block svg { max-width: 100%; height: auto; }
 .mermaid-block pre.mermaid { margin: 0; padding: 0; border: 0; background: none; }
 
-footer { margin-top: 3rem; color: var(--text-tertiary); font-size: 0.75rem; text-align: center; }
-footer p { margin: 0; }
-
 :focus { outline: none; }
 :focus-visible, textarea:focus-visible, input:focus-visible, select:focus-visible {
   outline: 2px solid var(--border-focus);
@@ -456,7 +452,7 @@ input[aria-invalid="true"] { border-color: var(--error-border); }
     padding-inline-end: max(1.5rem, env(safe-area-inset-right));
   }
   .settings-grid { grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr); align-items: start; }
-  .submit-area { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .submit-area .btn { width: auto; }
   .content-header { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 0.75rem 1rem; }
   .content-header-actions { justify-content: flex-end; }
 }

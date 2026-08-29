@@ -5,7 +5,6 @@ export const CreateForm: FC = () => {
     <div id="create-page" class="app-shell">
       <header class="app-header">
         <a class="brand" href="/" aria-label="Secure Paste home">Secure Paste</a>
-        <span class="local-status"><span aria-hidden="true" /> Encrypted locally</span>
       </header>
 
       <section class="workspace" aria-labelledby="create-title">
@@ -40,8 +39,8 @@ export const CreateForm: FC = () => {
               </select>
             </div>
 
-            <fieldset class="access-controls">
-              <legend>Access controls</legend>
+            <div class="access-controls" role="group" aria-labelledby="access-controls-title">
+              <h2 id="access-controls-title" class="group-heading">Access controls</h2>
               <label class="checkbox-row" for="burn-after-read">
                 <input type="checkbox" id="burn-after-read" />
                 <span>
@@ -71,11 +70,10 @@ export const CreateForm: FC = () => {
                 </div>
                 <span class="form-hint">Requires a password before the encrypted content can be downloaded.</span>
               </div>
-            </fieldset>
+            </div>
           </div>
 
           <div class="submit-area">
-            <p class="security-note">AES-256-GCM · The server receives encrypted content, not plaintext.</p>
             <button type="submit" id="create-btn" class="btn btn-primary">
               Encrypt and create link
             </button>
@@ -112,10 +110,6 @@ export const CreateForm: FC = () => {
 
         <div id="error" class="inline-error" style="display: none;" role="alert" tabindex={-1} />
       </section>
-
-      <footer>
-        <p>Encrypted in your browser. Stored as ciphertext.</p>
-      </footer>
     </div>
   );
 };
