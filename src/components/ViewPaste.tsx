@@ -3,84 +3,88 @@ import type { ViewPasteProps } from "../types";
 
 export const ViewPaste: FC<ViewPasteProps> = ({ id }) => {
   return (
-    <div id="view-page">
-      <div class="page-header">
-        <h1><a href="/">Secure Paste</a></h1>
-      </div>
+    <div id="view-page" class="app-shell">
+      <header class="app-header">
+        <a class="brand" href="/" aria-label="Secure Paste home">Secure Paste</a>
+        <span class="local-status"><span aria-hidden="true" /> Decryption stays local</span>
+      </header>
       <input type="hidden" id="paste-id" value={id} />
 
-      {/* Loading state */}
-      <div id="loading">
-        <div class="loading-dot" />
-        <div class="loading-text">Decrypting...</div>
+      <div id="loading" class="state-panel" aria-live="polite">
+        <span class="loading-indicator" aria-hidden="true" />
+        <p id="loading-text">Downloading encrypted content…</p>
       </div>
 
-      {/* Key missing state */}
-      <div id="key-missing" style="display: none;">
-        <div class="error-state">
-          <div class="error-icon">&#128273;</div>
-          <div class="error-message">Decryption key missing</div>
-          <div class="error-hint">
-            The decryption key wasn't found in the URL. Make sure you have the complete link, including everything after the # symbol.
+      <section id="key-missing" class="state-panel" style="display: none;" aria-labelledby="key-missing-title" tabindex={-1}>
+        <span class="state-icon" aria-hidden="true">#</span>
+        <h1 id="key-missing-title">Decryption key missing</h1>
+        <p>The complete URL includes a key after the # symbol. Ask the sender to copy the entire link.</p>
+        <a href="/" class="btn btn-secondary">Create a new paste</a>
+      </section>
+
+      <section id="password-prompt" class="password-panel" style="display: none;" aria-labelledby="password-title">
+        <div class="section-heading compact">
+          <p class="eyebrow">Access required</p>
+          <h1 id="password-title">Protected paste</h1>
+          <p>Enter the password required to retrieve this content.</p>
+        </div>
+
+        <form id="password-form">
+          <div class="form-group">
+            <label for="password-input">Password</label>
+            <div class="input-action-row">
+              <input
+                type="password"
+                id="password-input"
+                placeholder="Enter password"
+                autocomplete="current-password"
+                aria-describedby="password-help password-error"
+              />
+              <button
+                type="button"
+                id="toggle-view-password"
+                class="btn btn-secondary input-action"
+                aria-pressed="false"
+                aria-label="Show password"
+              >
+                Show
+              </button>
+            </div>
+            <span id="password-help" class="form-hint">The password controls access to the encrypted content.</span>
+            <span id="password-error" class="field-error" style="display: none;" role="alert" />
           </div>
-          <a href="/">Create a new paste</a>
-        </div>
-      </div>
+          <button type="submit" id="unlock-btn" class="btn btn-primary btn-full">Unlock paste</button>
+        </form>
+      </section>
 
-      {/* Password prompt */}
-      <div id="password-prompt" style="display: none;">
-        <div class="password-card">
-          <div class="lock-icon">&#128274;</div>
-          <h2>This paste is protected</h2>
-          <p class="subtitle">Enter the password to unlock and decrypt</p>
-          <input
-            type="password"
-            id="password-input"
-            placeholder="Password"
-          />
-          <button type="button" id="unlock-btn" class="btn btn-primary btn-full">
-            Unlock
-          </button>
-        </div>
-      </div>
+      <section id="error" class="state-panel" style="display: none;" aria-labelledby="error-message" tabindex={-1}>
+        <span class="state-icon state-icon-error" aria-hidden="true">!</span>
+        <h1 id="error-message">Unable to open paste</h1>
+        <p id="error-hint" />
+        <a href="/" class="btn btn-secondary">Create a new paste</a>
+      </section>
 
-      {/* Error state */}
-      <div id="error" style="display: none;">
-        <div class="error-state">
-          <div class="error-icon">&#9888;&#65039;</div>
-          <div class="error-message" id="error-message"></div>
-          <div class="error-hint" id="error-hint"></div>
-          <a href="/">Create a new paste</a>
-        </div>
-      </div>
-
-      {/* Content display */}
-      <div id="content-display" style="display: none;">
-        <div id="burn-notice" class="burn-notice" style="display: none;">
-          This paste has been destroyed and cannot be viewed again.
-        </div>
+      <section id="content-display" class="content-section" style="display: none;" aria-labelledby="content-title">
         <div class="content-card">
           <div class="content-header">
-            <span>Decrypted content</span>
+            <h1 id="content-title" tabindex={-1}>Decrypted content</h1>
             <div class="content-header-actions">
-              <button type="button" id="markdown-toggle-btn" class="btn btn-secondary" style="display: none;">Render Markdown</button>
+              <div id="view-mode-controls" class="segmented-control" style="display: none;" aria-label="Content view">
+                <button type="button" id="plain-text-btn" class="active" aria-pressed="true">Plain</button>
+                <button type="button" id="markdown-toggle-btn" aria-pressed="false">Markdown</button>
+              </div>
               <button type="button" id="copy-content-btn" class="btn btn-secondary">Copy</button>
             </div>
           </div>
+          <p id="content-copy-status" class="status-message content-status" aria-live="polite" />
           <div class="content-body">
             <pre><code id="content-code"></code></pre>
-            <div id="markdown-rendered" class="markdown-body" style="display: none;"></div>
+            <div id="markdown-rendered" class="markdown-body" style="display: none;" />
           </div>
         </div>
-        <div style="margin-top: 20px; text-align: center;">
-          <a href="/" style="color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 500;">Create a new paste</a>
-        </div>
-      </div>
+        <a href="/" class="text-link centered-link">Create another paste</a>
+      </section>
 
-      <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"
-      />
     </div>
   );
 };

@@ -119,7 +119,6 @@
   // === UI Helper Functions ===
 
   function showError(message, hint) {
-    // Hide everything else
     var el;
     el = document.getElementById("loading");
     if (el) el.style.display = "none";
@@ -131,23 +130,19 @@
     if (el) el.style.display = "none";
 
     var errorEl = document.getElementById("error");
-    if (errorEl) {
-      // Structured error with message + hint
-      var msgEl = document.getElementById("error-message");
-      var hintEl = document.getElementById("error-hint");
-      if (msgEl && hintEl) {
-        msgEl.textContent = message;
-        hintEl.textContent = hint || "";
-      } else {
-        // Fallback for create page (simple error div)
-        errorEl.textContent = message;
-        errorEl.style.color = "var(--error)";
-        errorEl.style.textAlign = "center";
-        errorEl.style.padding = "16px";
-        errorEl.style.fontSize = "13px";
-      }
-      errorEl.style.display = "block";
+    if (!errorEl) return;
+
+    var msgEl = document.getElementById("error-message");
+    var hintEl = document.getElementById("error-hint");
+    if (msgEl && hintEl) {
+      msgEl.textContent = message;
+      hintEl.textContent = hint || "";
+    } else {
+      errorEl.textContent = message;
     }
+
+    errorEl.style.display = errorEl.classList.contains("state-panel") ? "grid" : "block";
+    errorEl.focus();
   }
 
   async function copyToClipboard(text) {
@@ -158,6 +153,28 @@
       console.error("Failed to copy:", err);
       return false;
     }
+  }
+
+  function bindPasswordToggle(buttonId, inputId) {
+    var button = document.getElementById(buttonId);
+    var input = document.getElementById(inputId);
+    if (!button || !input) return;
+
+    button.addEventListener("click", function() {
+      var reveal = input.type === "password";
+      input.type = reveal ? "text" : "password";
+      button.textContent = reveal ? "Hide" : "Show";
+      button.setAttribute("aria-pressed", reveal ? "true" : "false");
+      button.setAttribute("aria-label", (reveal ? "Hide" : "Show") + " password");
+      input.focus({ preventScroll: true });
+    });
+  }
+
+  function formatDate(value) {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short"
+    }).format(new Date(value));
   }
 
   async function highlightContent() {
@@ -185,14 +202,14 @@
   // === Markdown Detection & Rendering ===
 
   var rawContent = null;
-  var markdownRendered = false;
   var markdownLibsLoaded = false;
   var mermaidLoaded = false;
 
   function detectMarkdown(text) {
+    // A heading or fenced block is already an unambiguous Markdown signal.
+    if (/^#{1,6}\s+\S/m.test(text) || /^```[\s\S]*?^```/m.test(text)) return true;
+
     var patterns = [
-      /^#{1,6}\s+\S/m,                     // ATX headings
-      /^```[\s\S]*?^```/m,                  // Fenced code blocks
       /^(?:\s*)[-*+]\s+\S/m,               // Unordered lists
       /^(?:\s*)\d+\.\s+\S/m,               // Ordered lists
       /\[.+?\]\(.+?\)/,                     // Links
@@ -248,24 +265,40 @@
     if (mermaidLoaded) return true;
     try {
       await loadScript("https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.12.0/mermaid.min.js");
+      var darkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
       window.mermaid.initialize({
         startOnLoad: false,
-        theme: "dark",
-        themeVariables: {
+        theme: darkMode ? "dark" : "base",
+        themeVariables: darkMode ? {
           darkMode: true,
-          background: "#1e1e2e",
-          primaryColor: "#3b82f6",
-          primaryTextColor: "#e2e8f0",
-          primaryBorderColor: "#4a5568",
-          secondaryColor: "#1e293b",
-          tertiaryColor: "#1a1b2e",
-          lineColor: "#64748b",
-          textColor: "#e2e8f0",
-          mainBkg: "#1e293b",
-          nodeBorder: "#4a5568",
-          clusterBkg: "#1e1e2e",
-          titleColor: "#e2e8f0",
-          edgeLabelBackground: "#1e293b"
+          background: "#252525",
+          primaryColor: "#2c2c2c",
+          primaryTextColor: "#ffffff",
+          primaryBorderColor: "#ffffff40",
+          secondaryColor: "#252525",
+          tertiaryColor: "#212121",
+          lineColor: "#ffffff8c",
+          textColor: "#ffffff",
+          mainBkg: "#2c2c2c",
+          nodeBorder: "#ffffff40",
+          clusterBkg: "#252525",
+          titleColor: "#ffffff",
+          edgeLabelBackground: "#252525"
+        } : {
+          darkMode: false,
+          background: "#ffffff",
+          primaryColor: "#f5f5f5",
+          primaryTextColor: "#0a0a0a",
+          primaryBorderColor: "#00000040",
+          secondaryColor: "#ffffff",
+          tertiaryColor: "#f5f5f5",
+          lineColor: "#6b6b6b",
+          textColor: "#0a0a0a",
+          mainBkg: "#ffffff",
+          nodeBorder: "#00000040",
+          clusterBkg: "#f5f5f5",
+          titleColor: "#0a0a0a",
+          edgeLabelBackground: "#ffffff"
         },
         fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace",
         fontSize: 14
@@ -321,35 +354,40 @@
     });
   }
 
-  async function toggleMarkdown() {
-    var toggleBtn = document.getElementById("markdown-toggle-btn");
+  function showPlainText() {
+    var plainBtn = document.getElementById("plain-text-btn");
+    var markdownBtn = document.getElementById("markdown-toggle-btn");
     var codeContainer = document.getElementById("content-code").parentElement;
     var renderedContainer = document.getElementById("markdown-rendered");
+    if (!plainBtn || !markdownBtn || !codeContainer || !renderedContainer) return;
 
-    if (!toggleBtn || !codeContainer || !renderedContainer) return;
+    codeContainer.style.display = "";
+    renderedContainer.style.display = "none";
+    plainBtn.classList.add("active");
+    plainBtn.setAttribute("aria-pressed", "true");
+    markdownBtn.classList.remove("active");
+    markdownBtn.setAttribute("aria-pressed", "false");
+  }
 
-    if (markdownRendered) {
-      // Switch to raw view
-      codeContainer.style.display = "";
-      renderedContainer.style.display = "none";
-      toggleBtn.textContent = "Render Markdown";
-      toggleBtn.classList.remove("active");
-      markdownRendered = false;
-    } else {
-      // Switch to rendered view
-      toggleBtn.disabled = true;
-      toggleBtn.textContent = "Loading...";
+  async function showMarkdown() {
+    var plainBtn = document.getElementById("plain-text-btn");
+    var markdownBtn = document.getElementById("markdown-toggle-btn");
+    var codeContainer = document.getElementById("content-code").parentElement;
+    var renderedContainer = document.getElementById("markdown-rendered");
+    if (!plainBtn || !markdownBtn || !codeContainer || !renderedContainer) return;
+
+    if (!renderedContainer.hasChildNodes()) {
+      markdownBtn.disabled = true;
+      markdownBtn.textContent = "Loading…";
 
       var html = await renderMarkdown(rawContent);
       if (html === null) {
-        toggleBtn.disabled = false;
-        toggleBtn.textContent = "Render Markdown";
+        markdownBtn.disabled = false;
+        markdownBtn.textContent = "Markdown";
         return;
       }
 
       renderedContainer.innerHTML = html;
-
-      // Render mermaid diagrams if any are present
       var mermaidBlocks = renderedContainer.querySelectorAll("pre.mermaid");
       if (mermaidBlocks.length > 0) {
         var mermaidReady = await loadMermaid();
@@ -361,14 +399,16 @@
           }
         }
       }
-
-      codeContainer.style.display = "none";
-      renderedContainer.style.display = "block";
-      toggleBtn.textContent = "View Raw";
-      toggleBtn.classList.add("active");
-      toggleBtn.disabled = false;
-      markdownRendered = true;
     }
+
+    codeContainer.style.display = "none";
+    renderedContainer.style.display = "block";
+    plainBtn.classList.remove("active");
+    plainBtn.setAttribute("aria-pressed", "false");
+    markdownBtn.classList.add("active");
+    markdownBtn.setAttribute("aria-pressed", "true");
+    markdownBtn.disabled = false;
+    markdownBtn.textContent = "Markdown";
   }
 
   // === Create Form Handler ===
@@ -385,21 +425,19 @@
     var shareUrlEl = document.getElementById("share-url");
     var errorEl = document.getElementById("error");
 
-    // Clear previous error
     if (errorEl) {
       errorEl.style.display = "none";
       errorEl.textContent = "";
     }
 
     var content = contentEl.value.trim();
-
     if (!content) {
-      showError("Please enter some content");
+      showError("Enter some content before creating a link.");
       return;
     }
 
     createBtnEl.disabled = true;
-    createBtnEl.textContent = "Encrypting...";
+    createBtnEl.textContent = "Encrypting…";
 
     try {
       var key = await generateKey();
@@ -422,31 +460,29 @@
         requestBody.passwordSalt = base64Encode(salt);
       }
 
+      createBtnEl.textContent = "Creating link…";
       var response = await fetch("/api/paste", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to create paste");
-      }
+      if (!response.ok) throw new Error("Failed to create paste");
 
       var data = await response.json();
-      var shareUrl = window.location.origin + "/" + data.id + "#key=" + keyBase64url;
-
-      shareUrlEl.value = shareUrl;
-      resultEl.style.display = "block";
-
-      // Hide form
+      shareUrlEl.value = window.location.origin + "/" + data.id + "#key=" + keyBase64url;
+      document.getElementById("result-expires").textContent = formatDate(data.expiresAt);
+      document.getElementById("result-password").textContent = password ? "Required" : "Not required";
+      document.getElementById("result-burn").textContent = burnAfterReadEl.checked ? "After retrieval" : "At expiration";
       document.getElementById("create-form").style.display = "none";
-
+      resultEl.style.display = "block";
+      resultEl.focus();
     } catch (err) {
       console.error("Create error:", err);
       showError(err.message || "Failed to create paste. Please try again.");
     } finally {
       createBtnEl.disabled = false;
-      createBtnEl.textContent = "Create secure link";
+      createBtnEl.textContent = "Encrypt and create link";
     }
   }
 
@@ -459,18 +495,17 @@
     if (!pasteIdEl) return;
 
     var pasteId = pasteIdEl.value;
-
-    // Extract key from URL fragment
     var fragment = window.location.hash;
     if (!fragment || !fragment.startsWith("#key=")) {
       document.getElementById("loading").style.display = "none";
-      document.getElementById("key-missing").style.display = "block";
+      var keyMissingEl = document.getElementById("key-missing");
+      keyMissingEl.style.display = "grid";
+      keyMissingEl.focus();
       return;
     }
 
     var keyBase64url = fragment.slice(5);
     var rawKey;
-
     try {
       rawKey = base64urlDecode(keyBase64url);
     } catch (err) {
@@ -480,100 +515,92 @@
 
     try {
       var response = await fetch("/api/paste/" + pasteId);
-
       if (response.status === 401) {
         var data = await response.json();
         storedSalt = data.salt;
-
         document.getElementById("loading").style.display = "none";
         document.getElementById("password-prompt").style.display = "block";
-        var pwInput = document.getElementById("password-input");
-        if (pwInput) pwInput.focus();
+        document.getElementById("password-input").focus();
         return;
       }
-
-      if (response.status === 403) {
-        showError("Incorrect password", "Please check the password and try again.");
-        return;
-      }
-
       if (response.status === 404) {
         showError("Paste not found", "This paste may have expired or been deleted.");
         return;
       }
-
       if (!response.ok) {
-        showError("Something went wrong", "Failed to retrieve the paste.");
+        showError("Unable to retrieve paste", "Please try again in a moment.");
         return;
       }
 
+      document.getElementById("loading-text").textContent = "Decrypting locally…";
       await decryptAndDisplay(await response.json(), rawKey);
-
     } catch (err) {
       console.error("View error:", err);
-      showError("Connection error", "Please check your network and try again.");
+      showError("Connection error", "Check your network connection and try again.");
     }
   }
 
-  async function handleUnlock() {
+  async function handleUnlock(event) {
+    if (event) event.preventDefault();
+
     var passwordInputEl = document.getElementById("password-input");
+    var passwordErrorEl = document.getElementById("password-error");
     var unlockBtnEl = document.getElementById("unlock-btn");
     var pasteIdEl = document.getElementById("paste-id");
-
     var password = passwordInputEl.value;
-    var pasteId = pasteIdEl.value;
 
-    if (!password) return;
+    passwordInputEl.removeAttribute("aria-invalid");
+    passwordErrorEl.style.display = "none";
+    passwordErrorEl.textContent = "";
+
+    if (!password) {
+      passwordInputEl.setAttribute("aria-invalid", "true");
+      passwordErrorEl.textContent = "Enter the password to continue.";
+      passwordErrorEl.style.display = "block";
+      passwordInputEl.focus();
+      return;
+    }
 
     if (!storedSalt) {
-      showError("Missing data", "Password salt not available. Please refresh and try again.");
+      showError("Missing password data", "Refresh the page and try again.");
       return;
     }
 
     unlockBtnEl.disabled = true;
-    unlockBtnEl.textContent = "Unlocking...";
+    unlockBtnEl.textContent = "Unlocking…";
 
     try {
       var salt = base64Decode(storedSalt);
       var hashBits = await derivePasswordHash(password, salt);
-      var passwordHash = base64Encode(hashBits);
-
-      var response = await fetch("/api/paste/" + pasteId, {
-        headers: { "X-Password-Hash": passwordHash }
+      var response = await fetch("/api/paste/" + pasteIdEl.value, {
+        headers: { "X-Password-Hash": base64Encode(hashBits) }
       });
 
       if (response.status === 403) {
-        unlockBtnEl.disabled = false;
-        unlockBtnEl.textContent = "Unlock";
-        // Show inline error - shake the card or show message
         passwordInputEl.value = "";
-        passwordInputEl.placeholder = "Incorrect password — try again";
+        passwordInputEl.setAttribute("aria-invalid", "true");
+        passwordErrorEl.textContent = "That password is incorrect. Try again.";
+        passwordErrorEl.style.display = "block";
         passwordInputEl.focus();
         return;
       }
-
       if (response.status === 404) {
         showError("Paste not found", "This paste may have expired or been deleted.");
         return;
       }
-
       if (!response.ok) {
-        showError("Something went wrong", "Failed to retrieve the paste.");
+        showError("Unable to retrieve paste", "Please try again in a moment.");
         return;
       }
 
-      var fragment = window.location.hash;
-      var keyBase64url = fragment.slice(5);
-      var rawKey = base64urlDecode(keyBase64url);
-
+      var rawKey = base64urlDecode(window.location.hash.slice(5));
       await decryptAndDisplay(await response.json(), rawKey);
-
     } catch (err) {
       console.error("Unlock error:", err);
-      showError("Unlock failed", "Something went wrong during decryption.");
+      showError("Unlock failed", "The paste could not be decrypted.");
     } finally {
       unlockBtnEl.disabled = false;
-      unlockBtnEl.textContent = "Unlock";
+      unlockBtnEl.textContent = "Unlock paste";
     }
   }
 
@@ -581,34 +608,20 @@
     try {
       var ciphertext = base64Decode(responseData.data);
       var iv = base64Decode(responseData.iv);
-
       var key = await importKey(rawKey);
       var content = await decrypt(ciphertext, iv, key);
 
-      // Hide loading/password prompt
       document.getElementById("loading").style.display = "none";
       document.getElementById("password-prompt").style.display = "none";
-
-      // Store raw content for markdown toggle
       rawContent = content;
 
-      // Display content
-      var contentCodeEl = document.getElementById("content-code");
-      contentCodeEl.textContent = content;
+      document.getElementById("content-code").textContent = content;
       document.getElementById("content-display").style.display = "block";
-
-      // Show burn notice if applicable
-      // (We check the response - if the API returned data, the burn happened server-side)
-
-      // Check for markdown and show toggle if detected
       if (detectMarkdown(content)) {
-        var toggleBtn = document.getElementById("markdown-toggle-btn");
-        if (toggleBtn) toggleBtn.style.display = "";
+        document.getElementById("view-mode-controls").style.display = "inline-flex";
       }
-
-      // Apply syntax highlighting
+      document.getElementById("content-title").focus();
       await highlightContent();
-
     } catch (err) {
       console.error("Decrypt error:", err);
       showError("Decryption failed", "The key may be invalid or the data may be corrupted.");
@@ -618,73 +631,56 @@
   // === Initialize ===
 
   function init() {
-    // Create page
     var createForm = document.getElementById("create-form");
     if (createForm) {
       createForm.addEventListener("submit", handleCreate);
+      bindPasswordToggle("toggle-create-password", "password");
 
       var copyBtn = document.getElementById("copy-btn");
-      if (copyBtn) {
-        copyBtn.addEventListener("click", async function() {
-          var shareUrl = document.getElementById("share-url").value;
-          var success = await copyToClipboard(shareUrl);
-          if (success) {
-            copyBtn.textContent = "Copied!";
-            copyBtn.style.color = "var(--success)";
-            copyBtn.style.borderColor = "var(--success-border)";
-            setTimeout(function() {
-              copyBtn.textContent = "Copy link";
-              copyBtn.style.color = "";
-              copyBtn.style.borderColor = "";
-            }, 2000);
-          }
-        });
-      }
+      copyBtn.addEventListener("click", async function() {
+        var shareUrlEl = document.getElementById("share-url");
+        var statusEl = document.getElementById("create-copy-status");
+        var success = await copyToClipboard(shareUrlEl.value);
+
+        if (success) {
+          copyBtn.textContent = "Copied";
+          statusEl.textContent = "Link copied to the clipboard.";
+        } else {
+          shareUrlEl.focus();
+          shareUrlEl.select();
+          statusEl.textContent = "Clipboard access failed. The link is selected for manual copying.";
+        }
+
+        setTimeout(function() {
+          copyBtn.textContent = "Copy link";
+          statusEl.textContent = "";
+        }, 2500);
+      });
     }
 
-    // View page
     var viewPage = document.getElementById("view-page");
     if (viewPage) {
       handleView();
+      bindPasswordToggle("toggle-view-password", "password-input");
+      document.getElementById("password-form").addEventListener("submit", handleUnlock);
+      document.getElementById("plain-text-btn").addEventListener("click", showPlainText);
+      document.getElementById("markdown-toggle-btn").addEventListener("click", showMarkdown);
 
-      var unlockBtn = document.getElementById("unlock-btn");
-      if (unlockBtn) {
-        unlockBtn.addEventListener("click", handleUnlock);
-      }
-
-      var passwordInput = document.getElementById("password-input");
-      if (passwordInput) {
-        passwordInput.addEventListener("keypress", function(e) {
-          if (e.key === "Enter") {
-            handleUnlock();
-          }
-        });
-      }
-
-      // Markdown toggle button
-      var markdownToggleBtn = document.getElementById("markdown-toggle-btn");
-      if (markdownToggleBtn) {
-        markdownToggleBtn.addEventListener("click", toggleMarkdown);
-      }
-
-      // Copy content button (always copies raw text)
       var copyContentBtn = document.getElementById("copy-content-btn");
-      if (copyContentBtn) {
-        copyContentBtn.addEventListener("click", async function() {
-          var textToCopy = rawContent || document.getElementById("content-code").textContent;
-          var success = await copyToClipboard(textToCopy);
-          if (success) {
-            copyContentBtn.textContent = "Copied!";
-            copyContentBtn.style.color = "var(--success)";
-            copyContentBtn.style.borderColor = "var(--success-border)";
-            setTimeout(function() {
-              copyContentBtn.textContent = "Copy";
-              copyContentBtn.style.color = "";
-              copyContentBtn.style.borderColor = "";
-            }, 2000);
-          }
-        });
-      }
+      copyContentBtn.addEventListener("click", async function() {
+        var statusEl = document.getElementById("content-copy-status");
+        var textToCopy = rawContent || document.getElementById("content-code").textContent;
+        var success = await copyToClipboard(textToCopy);
+        copyContentBtn.textContent = success ? "Copied" : "Copy failed";
+        statusEl.textContent = success
+          ? "Content copied to the clipboard."
+          : "Clipboard access failed. Select the content and copy it manually.";
+
+        setTimeout(function() {
+          copyContentBtn.textContent = "Copy";
+          statusEl.textContent = "";
+        }, 2500);
+      });
     }
   }
 
